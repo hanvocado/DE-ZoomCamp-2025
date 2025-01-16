@@ -82,3 +82,44 @@ select count(1) from yellow_taxi_data;
 ```
 There are 1369765 records.
 
+## Connecting pgAdmin and Postgres
+To make it more convenient to access and manage our databases, we will use _pgAdmin_. It's possible to run pgAdmin as as container along with the Postgres container, but both containers will have to be in the same virtual network so that they can find each other.
+
+👉 Create a Docker network called _pg-network_
+```bash
+docker network create pg-network
+```
+
+👉 Re-run Postgres container
+We will add the docker network name and name this container `pg-database`. The container name is neccessary, later we will use it in pgAdmin to access this particular container.
+
+```bash
+docker run -it \
+    -e POSTGRES_USER="root" \
+    -e POSTGRES_PASSWORD="root" \
+    -e POSTGRES_DB="ny_taxi" \
+    -v $(pwd)/ny_taxi_postgres_data:/var/lib/postgresql/data \
+    -p 5432:5432 \
+    --network=pg-network \
+    --name pg-database \
+    postgres:13
+``` 
+
+👉 Run pgAdmin container
+```bash
+docker run -it \
+    -e PGADMIN_DEFAULT_EMAIL="admin@admin.com" \
+    -e PGADMIN_DEFAULT_PASSWORD="root" \
+    -p 8080:80 \
+    --network=pg-network \
+    dpage/pgadmin4
+```
+
+👉 Connect pgAdmin to pg-database
+* Access pgAdmin: [localhost:8080](localhost:8080)
+* Register Server: 
+    * Right-click on Servers on the left sidebar and select Register > Server...
+    * Under _General_ section, give the Server a name
+    * Under _Connection_ section, add the same host name, user and password used when running the postgres container.
+
+👉 Save and explore
