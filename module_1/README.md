@@ -76,7 +76,7 @@ jupyter-notebook
 
 * Test
 In pgcli terminal, run these commands to check if data is there in ny_taxi database
-```bash
+```sql
 \dt
 select count(1) from yellow_taxi_data;
 ```
@@ -123,3 +123,80 @@ docker run -it \
     * Under _Connection_ section, add the same host name, user and password used when running the postgres container.
 
 👉 Save and explore
+
+## Dockerizing the Ingestion Script
+In the [Ingesting NY Taxi Data section](#ingesting-ny-taxi-data-to-postgres), we directly run jupyter notebook to ingest data. In this section, we will build our docker image to run ingestion script
+
+👉 Convert `upload-data.ipynb` to python script
+```bash
+jupyter nbconvert --to=script upload-data.ipynb
+```
+I got this error: `bash: /usr/bin/jupyter: No such file or directory`. This is because my system is prioritizing `/usr/bin` in its PATH variable before `/home/xxx/.local/bin`, where my actual jupyter installation resides. I did this to fix it: 
+
+```bash
+echo 'export PATH=/home/xxx/.local/bin:$PATH' >> ~/.bashrc
+source ~/.bashrc
+```
+
+👉 Edit the script
+* Pass arguments to the script using `argparse`
+* Make the script download data instead of reading file from host file system
+* Refactor
+
+👉 Test the script
+Before running it in docker container, make sure the ingestion script works
+
+* Drop `yellow_taxi_data` table
+```sql
+DROP TABLE yellow_taxi_data;
+```
+
+* Run the script
+```bash
+python3 ingest_data.py \
+    --user=root \
+    --password=root \
+    --host=localhost \
+    --port=5432 \
+    --db=ny_taxi \
+    --table_name=yellow_taxi_trips \
+    --url="https://github.com/DataTalksClub/nyc-tlc-data/releases/download/yellow/yellow_tripdata_2021-01.csv.gz"
+```
+
+* Go to pgAdmin and check
+
+👉 Write Dockerfile
+```Dockerfile
+FROM python:3.10
+
+RUN apt-get install wget
+RUN pip install pandas sqlalchemy psycopg2
+
+WORKDIR /app
+COPY ingest_data.py ingest_data.py
+
+ENTRYPOINT [ "python", "ingest_data.py" ]
+```
+
+👉 Build docker image
+```bash
+docker build -t taxi_ingest:1.0 .
+```
+
+👉 Run container
+```bash
+docker run -it \
+    --network=pg-network \
+    taxi_ingest:1.0 \
+        --user=root \
+        --password=root \
+        --host=pg-database \
+        --port=5432 \
+        --db=ny_taxi \
+        --table_name=yellow_taxi_trips \
+        --url="https://github.com/DataTalksClub/nyc-tlc-data/releases/download/yellow/yellow_tripdata_2021-01.csv.gz"
+```
+
+* `--network`: this container and the postgres container have to run on the same docker network so they can find each other.
+* `taxi_ingest:1.0`: the docker image name.
+* The rest parameters is for our ingestion job. `host` now is `pg-database`, which is the name of postgres container running in `pg-network`. `localhost` is the container itself, postgresql is not running in this container but in `pg-database` container.
