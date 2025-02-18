@@ -83,7 +83,7 @@ select count(1) from yellow_taxi_data;
 There are 1369765 records.
 
 ## Connecting pgAdmin and Postgres
-To make it more convenient to access and manage our databases, we will use _pgAdmin_. It's possible to run pgAdmin as as container along with the Postgres container, but both containers will have to be in the same virtual network so that they can find each other.
+To make it more convenient to access and manage our databases, we will use _pgAdmin_. It's possible to run pgAdmin as a container along with the Postgres container, but both containers will have to be in the same virtual network so that they can find each other.
 
 👉 Create a Docker network called _pg-network_
 ```bash
@@ -200,3 +200,21 @@ docker run -it \
 * `--network`: this container and the postgres container have to run on the same docker network so they can find each other.
 * `taxi_ingest:1.0`: the docker image name.
 * The rest parameters is for our ingestion job. `host` now is `pg-database`, which is the name of postgres container running in `pg-network`. `localhost` is the container itself, postgresql is not running in this container but in `pg-database` container.
+
+## Running Postgres and pgAdmin with Docker-Compose
+To make it more convenient to run multiple containers with just one config file.
+
+👉 Create `docker-compose.yaml`
+
+👉 Run services
+```bash
+docker-compose up
+```
+
+I got **Permission denied: '/var/lib/pgadmin/sessions'**. I fixed it by this command:
+```bash
+sudo chown -R 5050:5050 ./data_pgadmin/
+```
+The pgAdmin4 container runs as UID 5050 by default, so that command with set pgadmin as the owner of data_pgadmin folder.
+
+Now pgdatabase and pgadmin services are up, if you want to re-run `taxi_ingest` container, use `docker network ls` to find the network these services are running on.
