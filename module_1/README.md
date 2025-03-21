@@ -211,10 +211,27 @@ To make it more convenient to run multiple containers with just one config file.
 docker-compose up
 ```
 
-I got **Permission denied: '/var/lib/pgadmin/sessions'**. I fixed it by this command:
+I got **Permission denied: '/var/lib/pgadmin/sessions'**.
+Solution: Make the services run with the same UID/GID as host user
+* Create `.env` file, UID and GID variable will have the same value as host user
+
 ```bash
-sudo chown -R 5050:5050 ./data_pgadmin/
+echo "UID=$(id -u)" > .env
+echo "GID=$(id -g)" >> .env
 ```
-The pgAdmin4 container runs as UID 5050 by default, so that command with set pgadmin as the owner of data_pgadmin folder.
+
+* Add `user` and `env_file` variables to [docker-compose](./docker_sql/docker-compose.yml) file
 
 Now pgdatabase and pgadmin services are up, if you want to re-run `taxi_ingest` container, use `docker network ls` to find the network these services are running on.
+
+## Terraform
+
+Terraform: An infrastructure as code tool
+Example: terraform on our local machine will tell GCP who we are and what access we have to create resources.
+
+Pre-Requisites:
+* [Install Terraform](https://developer.hashicorp.com/terraform/install)
+
+* Create GCP account
+
+I had error about payment method while creating GCP account so I will temporarily stop at this for this module.
